@@ -2,11 +2,12 @@ package htmldoc
 
 import (
 	"fmt"
-	"github.com/wjdp/htmltest/output"
-	"golang.org/x/net/html"
 	"os"
 	"path"
 	"sync"
+
+	"github.com/wjdp/htmltest/output"
+	"golang.org/x/net/html"
 )
 
 // Document struct, representation of a document within the tested site
@@ -60,6 +61,10 @@ func (doc *Document) Parse() {
 	htmlNode, err := html.Parse(f)
 	output.CheckErrorGeneric(err)
 
+	// Remove all the "aside" nodes
+	// Need to improve so we can control this through a setting in .htmltest.yml
+	removeAside(htmlNode)
+
 	doc.htmlNode = htmlNode
 	doc.parseNode(htmlNode)
 }
@@ -110,4 +115,20 @@ func (doc *Document) IsHashValid(hash string) bool {
 	doc.Parse() // Ensure doc has been parsed
 	_, ok := doc.hashMap[hash]
 	return ok
+}
+
+func removeAside(n *html.Node) {
+	// Remove all children from an "aside" node
+	// Need to improve so that it can take a variable as the node to remove
+	if n.Type == html.ElementNode && n.Data == "aside" {
+		var nextSibling *html.Node
+		for c := n.FirstChild; c != nil; c = nextSibling {
+			nextSibling = c.NextSibling
+			n.RemoveChild(c)
+		}
+	} else {
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			removeAside(c)
+		}
+	}
 }
