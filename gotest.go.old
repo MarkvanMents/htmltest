@@ -1,0 +1,67 @@
+package main
+
+import (
+	"fmt"
+	"os"
+	"unsafe"
+
+	"golang.org/x/net/html"
+)
+
+func main() {
+	// Open, parse, and close document
+	f, _ := os.Open("souptest.html")
+	defer f.Close()
+
+	// This is where we need to read the file (f) and then get rid of the bits we don't want to test
+	// Basically ignore everything that is in <aside>
+	// Could use regex, but is that inefficient for such a big file?
+
+	htmlNode, _ := html.Parse(f)
+
+	//	fmt.Println("Length of htmlNode is ", len(htmlNode))
+
+	fmt.Println("Original htmlNode")
+	fmt.Println("Size of htmlNode is", unsafe.Sizeof(*htmlNode))
+	parseout(htmlNode)
+
+	removeAside(htmlNode)
+
+	fmt.Println("Truncated htmlNode")
+	fmt.Println("Size of htmlNode is", unsafe.Sizeof(*htmlNode))
+	parseout(htmlNode)
+}
+
+func removeAside(n *html.Node) {
+	// Remove all children from an "aside" node
+	if n.Type == html.ElementNode && n.Data == "aside" {
+		var nextSibling *html.Node
+		for c := n.FirstChild; c != nil; c = nextSibling {
+			nextSibling = c.NextSibling
+			n.RemoveChild(c)
+		}
+	} else {
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			removeAside(c)
+		}
+	}
+}
+
+func parseout(n *html.Node) {
+	// Output function from https://stackoverflow.com/questions/42439248/why-does-this-program-not-print-anything
+	// and https://pkg.go.dev/golang.org/x/net/html#example-Parse
+	if n.Type == html.ElementNode {
+		//		fmt.Println(n.Type, n.Data, n.Attr)
+		if n.Type == html.ElementNode && n.Data == "a" {
+			for _, a := range n.Attr {
+				if a.Key == "href" {
+					fmt.Println(a.Val)
+					break
+				}
+			}
+		}
+	}
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		parseout(c)
+	}
+}
